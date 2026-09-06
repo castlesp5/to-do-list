@@ -54,7 +54,7 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                             if choose == 0 && selected > 0 {
                                 let text = list.remove(selected);
                                 list.insert(selected - 1, text);
-                                selected += 1
+                                selected -= 1
                             }
                         }
                         else if c == 'J' {
