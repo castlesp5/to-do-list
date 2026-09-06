@@ -2,7 +2,11 @@ use ratatui::{
     self, DefaultTerminal, Frame, layout::{Alignment, Constraint, Layout}, style::{self, Color::{Black, Gray, Green, White}, Modifier}, widgets::{Block, List, ListItem, ListState, Paragraph},
 };
 
-#[derive(Debug)]
+// use std::io::Write;                                                                                                                                                                  
+// use std::fs::File; 
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
 pub struct ToDo {
     todo: String,
     done: bool
@@ -18,7 +22,7 @@ fn main() -> std::io::Result<()> {
 fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
     let mut list: Vec<ToDo> = vec![];
     let mut input = String::new();
-    let mut choose: bool = false;
+    let mut choose: i32 = 0;
     let mut selected: usize = 0;
     loop {
         terminal.draw(|frame| renderer(frame, &mut list, &input, selected, choose))?;
@@ -27,24 +31,46 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
         if let crossterm::event::Event::Key(eve_key) = event {
             match eve_key.code {
                 crossterm::event::KeyCode::Char(c) => {
-                    if choose {
+                    if choose > 0 {
                         input.push(c);
                     }
-                    else if c == 'i' {
-                        choose = true;
+                    else if c == 'a' {
+                        choose = 1;
+                    }
+                    else if c == 'e' && list.len() > 0 {
+                        choose = 2;
+                        input = list[selected].todo.clone();
                     }
                     else {
                         if c == 'j' && selected < list.len() {
                             selected += 1;
                         }
-                        if c == 'k' && selected > 0 {
+                        else if c == 'k' && selected > 0 {
                             selected -= 1;
                         }
-                        if c == 'd' && list.len() > 0 {
+                        else if c == 'K' {
+                            if choose == 0 && selected > 0 {
+                                let text = list.remove(selected);
+                                list.insert(selected - 1, text);
+                            }
+                        }
+                        else if c == 'J' {
+                            if choose == 0 && selected + 1 < list.len(){
+                                let text = list.remove(selected);
+                                list.insert(selected + 1, text);
+                            }
+                        }
+                        else if c == 'd' && list.len() > 0 {
                             list.remove(selected);
                         }
-                        if c == 'q' {
+                        else if c == 'q' {
                             break;
+                        }
+                        else if c == 's' {
+                            let js = serde_json::to_string_pretty(&list)?;
+                            for _ in &list {
+                                std::fs::write("output.json", &js)?;
+                            }
                         }
                     }
                 }
@@ -52,12 +78,16 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                     input.pop();
                 }
                 crossterm::event::KeyCode::Enter => {
-                    if choose {
+                    if choose > 0 {
                         if !input.is_empty() {
-                            list.push(ToDo { todo: input.clone(), done: false });
+                            match choose {
+                               1 => {list.push(ToDo { todo: input.clone(), done: false });}
+                               2 => {list[selected].todo = input.clone();}
+                               _ => {}
+                            }
+                            input.clear();
+                            choose = 0;
                         }
-                        input.clear();
-                        choose = false;
                     }
                     else {
                         if list.len() > 0 {
@@ -66,7 +96,7 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                     }
                 }
                 crossterm::event::KeyCode::Esc => { 
-                    choose = false;
+                    choose = 0;
                     input.clear();
                 }
                 _ => {}
@@ -77,7 +107,7 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
     Ok(())
 }
 
-fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usize, chosen: bool) {
+fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usize, chosen: i32) {
     let items: Vec<ListItem> = list
         .iter()
         .map(|todo| {
@@ -118,14 +148,18 @@ fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usi
         .style(style::Style::default()
         .fg(Black)
         .bg(Gray))
-        .block(Block::bordered().title("New To-Do"));
+        .block(Block::bordered().title("INSERT").title_bottom(ratatui::text::Line::from("www.github.com/castlesp5").alignment(Alignment::Right)));
 
     let mut choosable_text = String::new();
-    if chosen {
-        choosable_text = String::from("INSERT           <ENTER>: add a new to-do        <ESC>: quit INSERT mode     <Q>: quit the app");
+    if chosen > 0 {
+        match chosen {
+            1 => {choosable_text = String::from("INSERT           <ENTER>: add a new to-do        <ESC>: quit INSERT mode");}
+            2 => {choosable_text = String::from("EDIT             <ENTER>: submit modifications   <ESC>: quit EDIT mode");}
+            _ => {}
+        }
     }
     else {
-        choosable_text = String::from("NORMAL           <ENTER>: done/undone        <i>: enter INSERT mode      <j - k> : navigate the list     <d> : remove an element          <Q>: quit the app");
+        choosable_text = String::from("NORMAL           <ENTER>: done/undone        <a - e>: add/edit an item      <j - k> : navigate the list     <d> : remove an element          <Q>: quit the app");
     }
     let choosability = Paragraph::new(choosable_text)
         .alignment(Alignment::Left)
@@ -138,7 +172,7 @@ fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usi
     frame.render_widget(input_box, areas[2]);
     frame.render_widget(choosability, areas[3]);
 
-    if chosen {
+    if chosen > 0 {
         frame.set_cursor_position((
             areas[2].x + input.len() as u16 + 1,
             areas[2].y + 1,
