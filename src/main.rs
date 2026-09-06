@@ -1,12 +1,14 @@
+use std::fs;
+
 use ratatui::{
     self, DefaultTerminal, Frame, layout::{Alignment, Constraint, Layout}, style::{self, Color::{Black, Gray, Green, White}, Modifier}, widgets::{Block, List, ListItem, ListState, Paragraph},
 };
 
 // use std::io::Write;                                                                                                                                                                  
 // use std::fs::File; 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ToDo {
     todo: String,
     done: bool
@@ -52,12 +54,14 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                             if choose == 0 && selected > 0 {
                                 let text = list.remove(selected);
                                 list.insert(selected - 1, text);
+                                selected += 1
                             }
                         }
                         else if c == 'J' {
                             if choose == 0 && selected + 1 < list.len(){
                                 let text = list.remove(selected);
                                 list.insert(selected + 1, text);
+                                selected += 1
                             }
                         }
                         else if c == 'd' && list.len() > 0 {
@@ -67,10 +71,10 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                             break;
                         }
                         else if c == 's' {
-                            let js = serde_json::to_string_pretty(&list)?;
-                            for _ in &list {
-                                std::fs::write("output.json", &js)?;
-          ontains(KeyModifiers::CONTROL                  }
+                            choose = 3;
+                        }
+                        else if c == 'o' {
+                            choose = 4;
                         }
                     }
                 }
@@ -78,11 +82,20 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                     input.pop();
                 }
                 crossterm::event::KeyCode::Enter => {
+                    let js = serde_json::to_string_pretty(&list)?;
                     if choose > 0 {
                         if !input.is_empty() {
                             match choose {
                                1 => {list.push(ToDo { todo: input.clone(), done: false });}
                                2 => {list[selected].todo = input.clone();}
+                               3 => {
+                                    for _ in &list {
+                                        std::fs::write(&input, &js)?;
+                                    }}
+                               4 => {
+                                   let content = fs::read_to_string(&input)?;
+                                   list = serde_json::from_str(&content)?;
+                               }
                                _ => {}
                             }
                             input.clear();
@@ -144,17 +157,22 @@ fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usi
     let mut state = ListState::default();
     state.select(Some(selected));
     
-    let input_box = Paragraph::new(input)
-        .style(style::Style::default()
-        .fg(Black)
-        .bg(Gray))
-        .block(Block::bordered().title("INSERT").title_bottom(ratatui::text::Line::from("www.github.com/castlesp5").alignment(Alignment::Right)));
+    if chosen > 0 && chosen < 3 {
+        let input_box = Paragraph::new(input)
+            .style(style::Style::default()
+            .fg(Black)
+            .bg(Gray))
+            .block(Block::bordered().title("INSERT").title_bottom(ratatui::text::Line::from("www.github.com/castlesp5").alignment(Alignment::Right)));
+        frame.render_widget(input_box, areas[2]);
+    }
 
     let mut choosable_text = String::new();
     if chosen > 0 {
         match chosen {
             1 => {choosable_text = String::from("INSERT           <ENTER>: add a new to-do        <ESC>: quit INSERT mode");}
             2 => {choosable_text = String::from("EDIT             <ENTER>: submit modifications   <ESC>: quit EDIT mode");}
+            3 => {choosable_text = String::from(format!("Path to write into : {}", input));}
+            4 => {choosable_text = String::from(format!("Path to JSON file : {}", input));}
             _ => {}
         }
     }
@@ -169,14 +187,24 @@ fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usi
 
     frame.render_widget(header, areas[0]);
     frame.render_stateful_widget(todos, areas[1], &mut state);
-    frame.render_widget(input_box, areas[2]);
     frame.render_widget(choosability, areas[3]);
 
     if chosen > 0 {
-        frame.set_cursor_position((
-            areas[2].x + input.len() as u16 + 1,
-            areas[2].y + 1,
-        ));
+        match chosen {
+            1 => {frame.set_cursor_position((
+                areas[2].x + input.len() as u16 + 1,
+                areas[2].y + 1,
+            ));}
+            2 => {frame.set_cursor_position((
+                areas[2].x + input.len() as u16 + 1,
+                areas[2].y + 1,
+            ));}
+            3 => {frame.set_cursor_position((
+                    areas[3].x + input.len() as u16 + 21,
+                    areas[3].y + 1,
+            ));}
+            _ => {}
+        }
     }
 
 }
