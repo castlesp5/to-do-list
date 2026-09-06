@@ -2,6 +2,8 @@
 
 made by : ismael boujdad (version 1.0)
 
+<img src="https://images2.memedroid.com/images/UPLOADED20/50ea417c18554.jpeg" alt="Alt text" width="300" />
+
 A fast, keyboard-driven to-do list manager for the terminal, built in Rust with [ratatui](https://ratatui.rs/) and [crossterm](https://github.com/crossterm-rs/crossterm). Manage tasks, reorder them, mark them done, and persist your list to JSON — all without leaving the keyboard.
 
 ## Features
