@@ -4,8 +4,6 @@ use ratatui::{
     self, DefaultTerminal, Frame, layout::{Alignment, Constraint, Layout}, style::{self, Color::{Black, Gray, Green, White}, Modifier}, widgets::{Block, List, ListItem, ListState, Paragraph},
 };
 
-// use std::io::Write;                                                                                                                                                                  
-// use std::fs::File; 
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
