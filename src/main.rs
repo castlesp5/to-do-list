@@ -70,7 +70,7 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                             let js = serde_json::to_string_pretty(&list)?;
                             for _ in &list {
                                 std::fs::write("output.json", &js)?;
-                            }
+          ontains(KeyModifiers::CONTROL                  }
                         }
                     }
                 }
