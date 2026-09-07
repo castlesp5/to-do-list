@@ -80,19 +80,39 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
                     input.pop();
                 }
                 crossterm::event::KeyCode::Enter => {
-                    let js = serde_json::to_string_pretty(&list)?;
                     if choose > 0 {
                         if !input.is_empty() {
                             match choose {
                                1 => {list.push(ToDo { todo: input.clone(), done: false });}
                                2 => {list[selected].todo = input.clone();}
                                3 => {
-                                    for _ in &list {
-                                        std::fs::write(&input, &js)?;
-                                    }}
+                                    if !input.ends_with(".json") {
+                                        choose = 5;
+                                        continue;
+                                    }
+                                    let js = serde_json::to_string_pretty(&list)?;
+                                    std::fs::write(&input, &js)?;
+                                    choose = 8;
+                                    continue;
+                                    }
                                4 => {
-                                   let content = fs::read_to_string(&input)?;
-                                   list = serde_json::from_str(&content)?;
+                                    if !input.ends_with(".json") {
+                                        choose = 5;
+                                        continue;
+                                    }
+                                    match fs::read_to_string(&input) {
+                                        Ok(content) => {
+                                           match serde_json::from_str(&content) {
+                                                Ok(js2) => { list = js2 }
+                                                Err(_) => {choose = 6; continue;}
+                                           }
+                                        }
+                                        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                                            choose = 7;
+                                            continue;
+                                        }
+                                        Err(_) => {choose = 5; continue;}
+                                    }
                                }
                                _ => {}
                             }
@@ -171,6 +191,10 @@ fn renderer (frame: &mut Frame, list: &mut Vec<ToDo>, input: &str, selected: usi
             2 => {choosable_text = String::from("EDIT             <ENTER>: submit modifications   <ESC>: quit EDIT mode");}
             3 => {choosable_text = String::from(format!("Path to write into : {}", input));}
             4 => {choosable_text = String::from(format!("Path to JSON file : {}", input));}
+            5 => {choosable_text = String::from(format!("Wrong path format, file should be '.json'. Press <ESC> to return"));}
+            6 => {choosable_text = String::from(format!("ERROR: Malformed JSON file. Press <ESC> to return"));}
+            7 => {choosable_text = String::from(format!("File Not Found. Press <ESC> to return"));}
+            8 => {choosable_text = String::from(format!("File was saved into '{}'. Press <ESC> to return", input));}
             _ => {}
         }
     }
